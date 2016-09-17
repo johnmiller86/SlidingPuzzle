@@ -1,9 +1,11 @@
-package com.ist_311.slidingpuzzle;
+package com.ist_311.slidingpuzzle.activities;
 
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
+
+import com.ist_311.slidingpuzzle.R;
 
 public class MainMenuActivity extends AppCompatActivity {
 
@@ -14,32 +16,25 @@ public class MainMenuActivity extends AppCompatActivity {
     }
 
     /**
-     * Login button listener.
+     * Play button listener.
      * @param view the login button.
      */
-    public void play(View view) {
+    @SuppressWarnings("unused")
+    public void play(@SuppressWarnings("UnusedParameters") View view) {
 
         Intent intent = new Intent(this, PuzzleActivity.class);
         startActivity(intent);
     }
 
     /**
-     * Login button listener.
+     * Settings button listener.
      * @param view the login button.
      */
-    public void settings(View view) {
-//
-//        Intent intent = new Intent(this, SettingsActivity.class);
-//        startActivity(intent);
+    @SuppressWarnings("unused")
+    public void settings(@SuppressWarnings("UnusedParameters") View view) {
+
+        Intent intent = new Intent(this, SettingsActivity.class);
+        startActivity(intent);
     }
 
-//    /**
-//     * Login button listener.
-//     * @param view the login button.
-//     */
-//    public void highScores(View view) {
-//
-//        Intent intent = new Intent(this, HighScoresActivity.class);
-//        startActivity(intent);
-//    }
 }

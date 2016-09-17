@@ -7,7 +7,7 @@
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
-    tools:context="com.ist_311.slidingpuzzle.MainMenuActivity"
+    tools:context="com.ist_311.slidingpuzzle.activities.MainMenuActivity"
     android:background="@drawable/puzzle_pieces">
 
     <Button

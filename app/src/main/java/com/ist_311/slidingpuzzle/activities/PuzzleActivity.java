@@ -1,4 +1,4 @@
-package com.ist_311.slidingpuzzle;
+package com.ist_311.slidingpuzzle.activities;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -15,6 +15,9 @@ import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.ist_311.slidingpuzzle.R;
+import com.ist_311.slidingpuzzle.utilities.SessionManager;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,13 +50,16 @@ public class PuzzleActivity extends AppCompatActivity {
         setContentView(R.layout.activity_puzzle);
         initializeReferences();
         createPuzzle(BitmapFactory.decodeResource(getResources(), R.drawable.puzzle_pieces));
-        startTimer(1);
+        startTimer(0);
     }
 
     /**
      * Initializes all references.
      */
     private void initializeReferences() {
+
+        // Initializing Session
+        SessionManager sessionManager = new SessionManager(getApplicationContext());
 
         // Initializing Layout
         tableLayout = (TableLayout) findViewById(R.id.table_layout);
@@ -66,9 +72,9 @@ public class PuzzleActivity extends AppCompatActivity {
         imageButtons = new ArrayList<>();
         answerKey = new ArrayList<>();
 
-        // TODO GET DIFFICULTY
-        rows = 5;
-        cols = 5;
+        // Row settings
+        rows = sessionManager.getRows();
+        cols = sessionManager.getCols();
 
         // Initializing ImageButtons and adding to list
         createBoard();
@@ -182,12 +188,18 @@ public class PuzzleActivity extends AppCompatActivity {
 
         @Override
         public void onClick(View view) {
+
+            ImageButton imageButton = (ImageButton) view;
+
             if (counter % 2 == 0) {
                 setPrevious(view);
-                movesTextView.setText(new StringBuilder().append(String.valueOf(movesCounter)).append(" move(s)").toString());
+//                imageButton.setColorFilter(Color.argb(255, 255, 255, 255));
+                imageButton.setAlpha(0.6f);
+                movesTextView.setText(getResources().getQuantityString(R.plurals.moves, movesCounter, movesCounter));
                 counter++;
             }
             else if(counter % 2 == 1) {
+                previousButton.setAlpha(1.0f);
                 swapTiles(view);
             }
         }
@@ -197,7 +209,8 @@ public class PuzzleActivity extends AppCompatActivity {
      * Restarts the puzzle.
      * @param view the restart button.
      */
-    public void restart(View view){
+    @SuppressWarnings("unused")
+    public void restart(@SuppressWarnings("UnusedParameters") View view){
 
         // Clearing
         timer.cancel();
@@ -212,14 +225,15 @@ public class PuzzleActivity extends AppCompatActivity {
         enableButtons();
         pauseButton.setEnabled(true);
         isPause = false;
-        startTimer(1);
+        startTimer(0);
     }
 
     /**
      * Pauses the game.
      * @param view the pause button.
      */
-    public void pause(View view){
+    @SuppressWarnings("unused")
+    public void pause(@SuppressWarnings("UnusedParameters") View view){
         isPause = !isPause;
         if (isPause) {
             disableButtons();
@@ -257,8 +271,6 @@ public class PuzzleActivity extends AppCompatActivity {
     private void swapTiles(View view) {
         Drawable drawable;
 
-
-
         for (ImageButton imageButton : imageButtons){
 
             if (view == imageButton) {
@@ -270,7 +282,7 @@ public class PuzzleActivity extends AppCompatActivity {
                     imageButton.setImageDrawable(drawable);
                     counter++;
                     movesCounter++;
-                    movesTextView.setText(new StringBuilder().append(String.valueOf(movesCounter)).append(" move(s)").toString());
+                    movesTextView.setText(getResources().getQuantityString(R.plurals.moves, movesCounter, movesCounter));
                 }
             }
         }
@@ -310,25 +322,13 @@ public class PuzzleActivity extends AppCompatActivity {
             if (previousButton == imageButtons.get(i)) {
                 previousIndex = i;
             }
-            else if (button == imageButtons.get(i)){
+            if (button == imageButtons.get(i)){
                 currentIndex = i;
             }
         }
 
-        // Up
-        if (currentIndex - rows == previousIndex){
-            currentAnimation = AnimationUtils.loadAnimation(this, R.anim.slide_up);
-            previousAnimation = AnimationUtils.loadAnimation(this, R.anim.slide_down);
-            return true;
-        }
-        // Down
-        if (currentIndex + rows == previousIndex){
-            currentAnimation = AnimationUtils.loadAnimation(this, R.anim.slide_down);
-            previousAnimation = AnimationUtils.loadAnimation(this, R.anim.slide_up);
-            return true;
-        }
         // Left
-        else if(currentIndex - 1 == previousIndex){
+        if(currentIndex - 1 == previousIndex){
             currentAnimation = AnimationUtils.loadAnimation(this, R.anim.slide_left);
             previousAnimation = AnimationUtils.loadAnimation(this, R.anim.slide_right);
             return true;
@@ -339,9 +339,21 @@ public class PuzzleActivity extends AppCompatActivity {
             previousAnimation = AnimationUtils.loadAnimation(this, R.anim.slide_left);
             return true;
         }
+        // Up
+        else if (currentIndex - cols == previousIndex){
+            currentAnimation = AnimationUtils.loadAnimation(this, R.anim.slide_up);
+            previousAnimation = AnimationUtils.loadAnimation(this, R.anim.slide_down);
+            return true;
+        }
+        // Down
+        else if (currentIndex + cols == previousIndex){
+            currentAnimation = AnimationUtils.loadAnimation(this, R.anim.slide_down);
+            previousAnimation = AnimationUtils.loadAnimation(this, R.anim.slide_up);
+            return true;
+        }
         Toast.makeText(this, "You must select two adjacent tiles!", Toast.LENGTH_SHORT).show();
         counter--;
-        movesTextView.setText(new StringBuilder().append(String.valueOf(movesCounter)).append(" move(s)").toString());
+        movesTextView.setText(getResources().getQuantityString(R.plurals.moves, movesCounter, movesCounter));
         return false;
     }
 
@@ -362,10 +374,10 @@ public class PuzzleActivity extends AppCompatActivity {
                     public void run() {
 
                         if (time[0] > 60){
-                            timerTextView.setText(time[0] / 60 + "m " + time[0] % 60 + "s");
+                            timerTextView.setText(getString(R.string.minutes_seconds,time[0] / 60,time[0] % 60));
                         }
                         else{
-                            timerTextView.setText(time[0] + " seconds");
+                            timerTextView.setText(getResources().getQuantityString(R.plurals.seconds, time[0], time[0]));
                         }
                     }
                 });
