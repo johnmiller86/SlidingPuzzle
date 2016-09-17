@@ -1,4 +1,4 @@
-package com.johnmillercoding.slidingpuzzle;
+package com.ist_311.slidingpuzzle;
 
 import org.junit.Test;
 

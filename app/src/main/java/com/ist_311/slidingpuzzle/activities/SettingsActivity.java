@@ -2,6 +2,7 @@ package com.ist_311.slidingpuzzle.activities;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.view.View;
 import android.widget.ImageView;
 import android.widget.NumberPicker;
 
@@ -12,6 +13,10 @@ public class SettingsActivity extends AppCompatActivity {
 
     // Session
     private SessionManager sessionManager;
+
+    // Constants
+    private final int REQUEST_CAMERA = 0;
+    private final int SELECT_IMAGE = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,5 +53,9 @@ public class SettingsActivity extends AppCompatActivity {
         numberPickerCols.setMinValue(2);
         numberPickerCols.setValue(sessionManager.getCols());
 
+    }
+
+    public void chooseImage(View view) {
+       // TODO CAMERA INTENT OR GALLERY INTENT (USE ALERT DIALOG)
     }
 }
