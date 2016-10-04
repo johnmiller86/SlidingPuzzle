@@ -2,7 +2,6 @@ package com.ist_311.slidingpuzzle.activities;
 
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
@@ -97,12 +96,6 @@ public class PuzzleActivity extends AppCompatActivity {
         }else{
             finish();
         }
-    }
-
-    @Override
-    public void onConfigurationChanged(Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        configureButtons();
     }
 
     /**
