@@ -273,10 +273,6 @@ public class SettingsActivity extends AppCompatActivity {
 
                     Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
                     startActivityForResult(intent, SELECT_IMAGE);
-//                    Intent intent = new Intent();
-//                    intent.setType("image/*");
-//                    intent.setAction(Intent.ACTION_GET_CONTENT);
-//                    startActivityForResult(Intent.createChooser(intent, "Select a Photo"),SELECT_IMAGE);
                 }
                 // Blocked
                 else if(!ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_EXTERNAL_STORAGE)){
