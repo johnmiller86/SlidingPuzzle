@@ -1,12 +1,9 @@
 package com.ist_311.slidingpuzzle.activities;
 
-import android.content.DialogInterface;
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.DisplayMetrics;
 import android.view.View;
@@ -14,7 +11,6 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.Button;
 import android.widget.ImageButton;
-import android.widget.ImageView;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
@@ -62,55 +58,20 @@ public class PuzzleActivity extends AppCompatActivity {
         startTimer(0);
     }
 
-    @Override
-    public void onDestroy(){
-        super.onDestroy();
-        if (timer != null) {
-            timer.cancel();
-        }
-    }
-
-    @Override
-    public void onBackPressed() {
-
-        if (!isSolved()) {
-            new AlertDialog.Builder(this)
-                    .setTitle("Progress will be lost...")
-                    .setMessage("Are you sure you want to quit?")
-
-                    // Open Settings button
-                    .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int which) {
-                            finish();
-                        }
-                    })
-
-                    // Denied, close app
-                    .setNegativeButton("No", new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int which) {
-                            dialog.dismiss();
-                        }
-                    })
-                    .setIcon(R.mipmap.ic_launcher)
-                    .show();
-        }else{
-            finish();
-        }
-    }
-
     /**
      * Initializes all references.
      */
     private void initializeReferences() {
 
         // Initializing Session
-        SessionManager sessionManager = new SessionManager(this);
+        SessionManager sessionManager = new SessionManager(getApplicationContext());
         UserFunctions userFunctions = new UserFunctions();
         User user = userFunctions.getUser(sessionManager.getUsername());
         SettingFunctions settingFunctions = new SettingFunctions();
         Settings settings = settingFunctions.getSettings(user);
         PuzzleFunctions puzzleFunctions = new PuzzleFunctions();
         Puzzle puzzle = puzzleFunctions.getPuzzle(user);
+
 
         // Initializing Layout
         tableLayout = (TableLayout) findViewById(R.id.table_layout);
@@ -144,43 +105,16 @@ public class PuzzleActivity extends AppCompatActivity {
         pauseButton = (Button) findViewById(R.id.button_pause);
         resetButton = (Button) findViewById(R.id.button_reset);
 
-        // Add listeners
-        pauseButton.setOnClickListener(new View.OnClickListener() {
-
-            @Override
-            public void onClick(View view) {
-                pause();
-            }
-        });
-
-        resetButton.setOnClickListener(new View.OnClickListener(){
-
-            @Override
-            public void onClick(View view){
-                restart();
-            }
-        });
-
         // Initializing Counters
         counter = 0;
         movesCounter = 0;
         isPause = false;
 
-        // Create puzzle
-        Intent intent = getIntent();
-        if (intent.getStringExtra(MainActivity.PUZZLE_MODE_TAG) != null && intent.getStringExtra(MainActivity.PUZZLE_MODE_TAG).equals("campaign")){
-
-            // Create bitmap
-            Bitmap bitmap = BitmapFactory.decodeResource(getResources(), getResources().getIdentifier(randomLevel(), "drawable", getPackageName()));
-
-            createPuzzle(bitmap);
-        }else{
-            if (puzzle.getPuzzleId() != 0){
-                createPuzzle(puzzle.getPuzzle(this));
-            }
-            else {
-                createPuzzle(BitmapFactory.decodeResource(getResources(), R.drawable.level_1));
-            }
+        if (puzzle.getPuzzleId() != 0){
+            createPuzzle(puzzle.getPuzzle(this));
+        }
+        else {
+            createPuzzle(BitmapFactory.decodeResource(getResources(), R.drawable.puzzle_pieces));
         }
     }
 
@@ -213,11 +147,9 @@ public class PuzzleActivity extends AppCompatActivity {
 
         for (ImageButton imageButton : imageButtons) {
 
-            // Setting Attributes
+            // Sizing Button
             imageButton.getLayoutParams().width = displayMetrics.widthPixels / cols;
             imageButton.getLayoutParams().height = displayMetrics.heightPixels / rows;
-            imageButton.setScaleType(ImageView.ScaleType.FIT_XY);
-            imageButton.setPadding(0,0,0,0);
             imageButton.requestLayout();
 
             // Adding Listener
@@ -301,18 +233,21 @@ public class PuzzleActivity extends AppCompatActivity {
 
     /**
      * Restarts the puzzle.
+     * @param view the restart button.
      */
-    private void restart(){
+    @SuppressWarnings("unused")
+    public void restart(@SuppressWarnings("UnusedParameters") View view){
 
         // Clearing
         timer.cancel();
         counter = 0;
         movesCounter = 0;
+        answerKey.clear();
         movesTextView.setText(R.string.default_moves);
         timerTextView.setText(R.string.default_time);
 
         // Restarting
-        randomize();
+        createPuzzle(BitmapFactory.decodeResource(getResources(), R.drawable.puzzle_pieces));
         enableButtons();
         pauseButton.setEnabled(true);
         isPause = false;
@@ -321,8 +256,10 @@ public class PuzzleActivity extends AppCompatActivity {
 
     /**
      * Pauses the game.
+     * @param view the pause button.
      */
-    private void pause(){
+    @SuppressWarnings("unused")
+    public void pause(@SuppressWarnings("UnusedParameters") View view){
         isPause = !isPause;
         if (isPause) {
             disableButtons();
@@ -440,13 +377,9 @@ public class PuzzleActivity extends AppCompatActivity {
             previousAnimation = AnimationUtils.loadAnimation(this, R.anim.slide_up);
             return true;
         }
-        // Tiles not adjacent
+        Toast.makeText(this, "You must select two adjacent tiles!", Toast.LENGTH_SHORT).show();
         counter--;
         movesTextView.setText(getResources().getQuantityString(R.plurals.moves, movesCounter, movesCounter));
-        // Don't annoy user if they cancelled a selection
-        if (currentIndex != previousIndex) {
-            Toast.makeText(this, "You must select two adjacent tiles!", Toast.LENGTH_SHORT).show();
-        }
         return false;
     }
 
@@ -491,13 +424,4 @@ public class PuzzleActivity extends AppCompatActivity {
         return true;
     }
 
-
-    /**
-     * Getting random level via resource id string *TESTING*
-     * @return a random resource string.
-     */
-    private String randomLevel(){
-        int level = (int) (Math.random() * 20) + 1;
-        return "level_" + level;
-    }
 }

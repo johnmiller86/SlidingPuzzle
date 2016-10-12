@@ -10,7 +10,7 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.Light.NoActionBar.FullScreen">
-        <activity android:name=".activities.SplashScreenActivity">
+        <activity android:name=".activities.LoginActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -18,9 +18,9 @@
             </intent-filter>
         </activity>
         <activity android:name=".activities.RegisterActivity"/>
-        <activity android:name=".activities.LoginActivity"/>
-        <activity android:name=".activities.MainActivity"/>
+        <activity android:name=".activities.MainMenuActivity"/>
         <activity android:name=".activities.PuzzleActivity"/>
+        <activity android:name=".activities.SettingsActivity"/>
     </application>
 
 </manifest>
