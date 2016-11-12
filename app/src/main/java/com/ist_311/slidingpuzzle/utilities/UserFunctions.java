@@ -13,7 +13,7 @@ public class UserFunctions {
 
     // Column names
     private static final String USER_ID = "user_id";
-    private static final String USERNAME = "username";
+    static final String USERNAME = "username";
     private static final String PASSWORD = "password";
 
     /**

@@ -4,8 +4,9 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
-import com.ist_311.slidingpuzzle.models.User;
 import com.ist_311.slidingpuzzle.models.Settings;
+import com.ist_311.slidingpuzzle.models.User;
+
 /**
  * Class to handle all puzzle DB functions.
  * @author John D. Miller.

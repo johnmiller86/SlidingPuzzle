@@ -1,0 +1,59 @@
+package com.ist_311.slidingpuzzle.models;
+
+public class LeaderboardEntry {
+
+    private int level_num, moves, score;
+    private String time;
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    private String username;
+
+    public void setLeaderboard_id(int leaderboard_id) {
+        int leaderboard_id1 = leaderboard_id;
+    }
+
+    public int getMoves() {
+        return moves;
+    }
+
+    public void setMoves(int moves) {
+        this.moves = moves;
+    }
+
+    public int getScore() {
+        return score;
+    }
+
+    public void setScore(int score) {
+        this.score = score;
+    }
+
+    public String getTime() {
+        return time;
+    }
+
+    public void setTime(String time) {
+        this.time = time;
+    }
+
+
+    public int getLevel_num() {
+        return level_num;
+    }
+
+    public void setLevel_num(int level_num) {
+        this.level_num = level_num;
+    }
+
+
+
+
+
+}

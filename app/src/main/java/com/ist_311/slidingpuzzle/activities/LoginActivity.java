@@ -30,9 +30,10 @@ public class LoginActivity extends AppCompatActivity {
 
         sessionManager = new SessionManager(getApplicationContext());
 
-        // Proceed to next screen, user already logged in.
+        // Check if user is already logged in or not
         if (sessionManager.isLoggedIn()) {
-            Intent intent = new Intent(LoginActivity.this, MainMenuActivity.class);
+            // User is already logged in. Take him to main activity
+            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
             startActivity(intent);
             finish();
         }
@@ -79,7 +80,7 @@ public class LoginActivity extends AppCompatActivity {
             // Configuring user
             sessionManager.setLoggedIn(true);
             sessionManager.setUsername(user.getUsername());
-            Intent intent = new Intent(this, MainMenuActivity.class);
+            Intent intent = new Intent(this, MainActivity.class);
 
             // Launching StartScreenActivity
             startActivity(intent);
