@@ -14,9 +14,6 @@ import java.io.File;
 
 import static com.ist_311.slidingpuzzle.activities.MainActivity.sessionManager;
 
-/**
- *
- */
 public class PuzzleFunctions {
 
     /**
