@@ -1,8 +1,11 @@
 package com.ist_311.slidingpuzzle.activities;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.net.ConnectivityManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
@@ -11,47 +14,79 @@ import android.support.v4.app.FragmentTransaction;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AlertDialog;
 import android.view.View;
+import android.widget.EditText;
+import android.widget.Toast;
 
 import com.ist_311.slidingpuzzle.R;
-import com.ist_311.slidingpuzzle.utilities.DBHelper;
-import com.ist_311.slidingpuzzle.utilities.DatabaseManager;
+import com.ist_311.slidingpuzzle.utilities.LeaderboardFunctions;
+import com.ist_311.slidingpuzzle.utilities.LevelFunctions;
+import com.ist_311.slidingpuzzle.utilities.NetworkReceiver;
+import com.ist_311.slidingpuzzle.utilities.PuzzleFunctions;
 import com.ist_311.slidingpuzzle.utilities.SessionManager;
+import com.ist_311.slidingpuzzle.utilities.SettingFunctions;
 
+@SuppressWarnings("EmptyMethod")
 @SuppressLint("CommitTransaction")
-public class MainActivity extends FragmentActivity implements FragmentDrawer.FragmentDrawerListener {
+public class MainActivity extends FragmentActivity implements FragmentDrawer.FragmentDrawerListener, NetworkReceiver.NetworkStateReceiverListener {
 
     // Session
     public static SessionManager sessionManager;
+    public static SettingFunctions settingFunctions;
+    public static PuzzleFunctions puzzleFunctions;
+    public static LeaderboardFunctions leaderboardFunctions;
+    //    public static Settings settings;
+
+    // Fragment
     private FragmentTransaction fragmentTransaction;
     public static Fragment fragment;
     private final String FRAGMENT_TAG = "fragment_tag";
-    public static final String PUZZLE_MODE_TAG = "puzzle_mode_tag";
+
+    // Tags
+    public static final String PUZZLE_URL_TAG = "puzzle_mode_tag";
     public static final String PUZZLE_TIMER_TAG = "puzzle_timer_tag";
     public static final String PUZZLE_LEVEL_TAG = "puzzle_level_tag";
     public static final String PUZZLE_ROW_TAG = "puzzle_row_tag";
     public static final String PUZZLE_COL_TAG = "puzzle_col_tag";
+    public static final String PUZZLE_MOVES_TAG = "puzzle_moves_tag";
+
+    // Network
+    private NetworkReceiver networkReceiver;
+    private boolean isInFocus;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // Network stuff
+        isInFocus = true;
+        networkReceiver = new NetworkReceiver();
+        networkReceiver.addListener(this);
+        registerReceiver(networkReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
+
         // Instantiating Session
-        sessionManager = new SessionManager(getApplicationContext());
+        sessionManager = new SessionManager(this);
+        settingFunctions = new SettingFunctions();
+        settingFunctions.getSettings(this, sessionManager.getEmail());
+        puzzleFunctions = new PuzzleFunctions();
+        leaderboardFunctions = new LeaderboardFunctions();
+        LevelFunctions levelFunctions = new LevelFunctions();
+        levelFunctions.setOpenLevels();
 
         // FragmentDrawer
         FragmentDrawer fragmentDrawer = (FragmentDrawer) getSupportFragmentManager().findFragmentById(R.id.fragment_navigation_drawer);
         fragmentDrawer.setUp(R.id.fragment_navigation_drawer, (DrawerLayout) findViewById(R.id.drawer_layout));
         fragmentDrawer.setDrawerListener(this);
 
-        // Database Manager
-        DBHelper dbHelper = new DBHelper(this.getApplicationContext());
-        DatabaseManager.initializeInstance(dbHelper);
+        // Set profile picture if applicable
+        if (!sessionManager.getFacebookImageUrl().equals("")) {
+            fragmentDrawer.setProfilePicture();
+        }
 
-        // Load/recover fragment
-        if (savedInstanceState != null && getSupportFragmentManager().getFragment(savedInstanceState, FRAGMENT_TAG) != null){
+        // Create/recover fragment
+        if (savedInstanceState != null && getSupportFragmentManager().getFragment(savedInstanceState, FRAGMENT_TAG) != null) {
             fragment = getSupportFragmentManager().getFragment(savedInstanceState, FRAGMENT_TAG);
-        }else {
+        } else {
             fragment = new MainMenuFragment();
         }
         fragmentTransaction = getSupportFragmentManager().beginTransaction();
@@ -60,13 +95,46 @@ public class MainActivity extends FragmentActivity implements FragmentDrawer.Fra
         fragmentTransaction.commit();
     }
 
+    @Override
+    protected void onResume(){
+        super.onResume();
+        isInFocus = true;
+        registerReceiver(networkReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
+    }
+
+    @Override
+    protected void onPause(){
+        super.onPause();
+        isInFocus = false;
+    }
+
+    @Override
+    protected void onDestroy(){
+        super.onDestroy();
+        try{
+            unregisterReceiver(networkReceiver);
+        }catch (IllegalArgumentException ex){
+            ex.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void onStop(){
+        super.onStop();
+        try{
+            unregisterReceiver(networkReceiver);
+        }catch (IllegalArgumentException ex){
+            ex.printStackTrace();
+        }
+    }
+
     /**
      * Logs out the user.
      */
     private void logoutUser() {
 
-        sessionManager.setLoggedIn(false);
-        sessionManager.setUsername("");
+        // Clear the SharedPreferences
+        sessionManager.clearSession();
 
         // Launching the login activity
         Intent intent = new Intent(this, LoginActivity.class);
@@ -100,7 +168,7 @@ public class MainActivity extends FragmentActivity implements FragmentDrawer.Fra
                 break;
             // Leaderboards
             case 3:
-                if (!(fragment instanceof  LeaderboardFragment)) {
+                if (!(fragment instanceof LeaderboardFragment)) {
                     fragment = new LeaderboardFragment();
                     current = false;
                 }
@@ -132,6 +200,7 @@ public class MainActivity extends FragmentActivity implements FragmentDrawer.Fra
     @Override
     public void onBackPressed() {
 
+        // User is on main menu, prompt to exit
         if (fragment instanceof MainMenuFragment) {
             new AlertDialog.Builder(this)
                     .setTitle("Exit")
@@ -152,7 +221,10 @@ public class MainActivity extends FragmentActivity implements FragmentDrawer.Fra
                     })
                     .setIcon(R.mipmap.ic_launcher)
                     .show();
-        }else{
+        }
+
+        // Return to the main menu
+        else{
             MainActivity.fragment = new MainMenuFragment();
             fragmentTransaction = getSupportFragmentManager().beginTransaction();
             fragmentTransaction.setCustomAnimations(R.anim.fade_in, R.anim.fade_out);
@@ -175,5 +247,45 @@ public class MainActivity extends FragmentActivity implements FragmentDrawer.Fra
 
         //Save the Fragment's instance
         getSupportFragmentManager().putFragment(savedFragment, FRAGMENT_TAG, fragment);
+    }
+
+
+    @Override
+    public void networkAvailable() {}
+
+    @Override
+    public void networkUnavailable() {
+        if (isInFocus) {
+            Toast.makeText(this, "No connection!", Toast.LENGTH_SHORT).show();
+            Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+            intent.putExtra("noNetworkIntent", true);
+            startActivity(intent);
+        }
+    }
+
+    /**
+     * Allows the user to enter a cheat.
+     * @param context the view's context.
+     */
+    public static void enterCheat(final Context context){
+        final EditText editText = new EditText(context);
+        new AlertDialog.Builder(context)
+                .setTitle("Filthy Cheater!")
+                .setMessage("Enter your code, you lowlife.")
+                .setView(editText)
+                .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                        String input = editText.getText().toString().trim();
+                        if (input.equals("/hacklevels")){
+                            sessionManager.setUnlocked(20);
+                            Toast.makeText(context, "Enjoy it while it lasts dirtbag!", Toast.LENGTH_LONG).show();
+                        }
+                    }
+                })
+                .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                    }
+                })
+                .show();
     }
 }

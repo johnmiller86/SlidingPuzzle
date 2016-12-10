@@ -1,103 +1,135 @@
 package com.ist_311.slidingpuzzle.utilities;
 
-import android.content.ContentValues;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
+import android.app.Activity;
+import android.content.Context;
+import android.content.pm.ActivityInfo;
+import android.widget.Toast;
 
-import com.ist_311.slidingpuzzle.models.Settings;
-import com.ist_311.slidingpuzzle.models.User;
+import com.android.volley.Request;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
 
-/**
- * Class to handle all puzzle DB functions.
- * @author John D. Miller.
- * @version 1.0.1
- * @since 09/10/2016
- */
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import static com.facebook.FacebookSdk.getApplicationContext;
+import static com.ist_311.slidingpuzzle.activities.MainActivity.sessionManager;
+
 public class SettingFunctions {
 
-    // Table name
-    static final String SETTINGS_TABLE = "settings";
-
-    // Column names
-    private static final String SETTING_ID = "setting_id";
-    private static final String USER_ID = "user_id";
-    private static final String ROWS = "rows";
-    private static final String COLUMNS = "columns";
-
-
     /**
-     * Builds the settings table create statement.
-     * @return the SQL statement.
+     * Gets the user's settings from MySQL.
      */
-    static String createTable(){
-        return "CREATE TABLE " + SETTINGS_TABLE + "("
-                + SETTING_ID  + " INTEGER PRIMARY KEY AUTOINCREMENT, "
-                + USER_ID + " INTEGER,"
-                + ROWS + " INTEGER, "
-                + COLUMNS + " INTEGER, "
-                + "FOREIGN KEY(" + USER_ID + ") REFERENCES " + UserFunctions.USERS_TABLE + "(" + USER_ID + "))";
+    public void getSettings(final Context context, final String email) {
+        String requestString = "get_settings";
+        StringRequest strReq = new StringRequest(Request.Method.POST, Config.URL_GET_SETTINGS, new Response.Listener<String>() {
+
+                @Override
+            public void onResponse(String response) {
+
+                try {
+                    // Retrieve JSON error object
+                    JSONObject jsonObject = new JSONObject(response);
+                    boolean error = jsonObject.getBoolean("error");
+
+                    // Check for error node in json
+                    if (!error) {
+                        // Configuring settings
+                        sessionManager.setCols(jsonObject.getInt("columns"));
+                        sessionManager.setRows(jsonObject.getInt("rows"));
+                        sessionManager.setPuzzlePath(jsonObject.getString("puzzle_path"));
+                    } else {
+                        // Error fetching data. Get the error message
+                        String errorMsg = jsonObject.getString("error_msg");
+                        Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show();
+                    }
+                }
+                // JSON error
+                catch (JSONException e) {
+                    e.printStackTrace();
+                    Toast.makeText(context, "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Toast.makeText(context, error.getMessage(), Toast.LENGTH_LONG).show();
+            }
+        }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+                // Posting parameters to login url
+                Map<String, String> params = new HashMap<>();
+                params.put("email", email);
+                return params;
+            }
+        };
+
+        // Adding request to request queue
+        VolleyController.getVolleyController().addToRequestQueue(strReq, requestString);
     }
 
     /**
-     * Inserts settings into the database.
-     * @param user the user.
-     * @param settings the settings.
+     * Saves the user's settings in MySQL.
      */
-    public void insert(User user, Settings settings) {
-        SQLiteDatabase db = DatabaseManager.getDatabaseManager().openDatabase();
-        ContentValues values = new ContentValues();
-        values.put(USER_ID, user.getUserId());
-        values.put(ROWS, settings.getRows());
-        values.put(COLUMNS, settings.getColumns());
+    public void saveSettings(final Activity activity) {
+        activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
+        String requestString = "save_settings";
+        StringRequest strReq = new StringRequest(Request.Method.POST, Config.URL_SAVE_SETTINGS, new Response.Listener<String>() {
 
-        // Inserting Row
-        db.insert(SETTINGS_TABLE, null, values);
-        DatabaseManager.getDatabaseManager().closeDatabase();
-    }
+            @Override
+            public void onResponse(String response) {
+                activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
 
-    /**
-     * Updates the settings in the database.
-     * @param user the user.
-     * @param settings the new settings.
-     */
-    public void update(User user, Settings settings){
+                try {
+                    // Retrieve JSON error object
+                    JSONObject jsonObject = new JSONObject(response);
+                    boolean error = jsonObject.getBoolean("error");
 
-        // Database
-        SQLiteDatabase db = DatabaseManager.getDatabaseManager().openDatabase();
+                    // Check for error node in json
+                    if (!error) {
+                        Toast.makeText(getApplicationContext(), "Settings saved!",Toast.LENGTH_LONG);
+                    } else {
+                        // Error fetching data. Get the error message
+                        String errorMsg = jsonObject.getString("error_msg");
+                        Toast.makeText(getApplicationContext(), errorMsg, Toast.LENGTH_LONG).show();
+                    }
+                }
+                // JSON error
+                catch (JSONException e) {
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
+                }
+            }
+        }, new Response.ErrorListener() {
 
-        // Values
-        ContentValues values = new ContentValues();
-        values.put(USER_ID, user.getUserId());
-        values.put(ROWS, settings.getRows());
-        values.put(COLUMNS, settings.getColumns());
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Toast.makeText(getApplicationContext(), error.getMessage(), Toast.LENGTH_LONG).show();
+                activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
+            }
+        }) {
 
-        // Where
-        String where = SETTING_ID + " = ?";
-        String[] id = {String.valueOf(settings.getSettingId())};
+            @Override
+            protected Map<String, String> getParams() {
+                // Posting parameters to login url
+                Map<String, String> params = new HashMap<>();
+                params.put("email", sessionManager.getEmail());
+                params.put("rows", String.valueOf(sessionManager.getRows()));
+                params.put("columns", String.valueOf(sessionManager.getCols()));
+                params.put("puzzle_path", sessionManager.getPuzzlePath());
+                return params;
+            }
+        };
 
-        // Inserting Row
-        db.update(SETTINGS_TABLE, values, where, id);
-        DatabaseManager.getDatabaseManager().closeDatabase();
-    }
-
-    /**
-     * Gets the user's settings.
-     * @return the settings.
-     */
-    public Settings getSettings(User user){
-
-        Settings settings = new Settings();
-        SQLiteDatabase db = DatabaseManager.getDatabaseManager().openDatabase();
-        Cursor cursor = db.rawQuery("SELECT * FROM " + SETTINGS_TABLE + " WHERE " + USER_ID + " = ?", new String[]{String.valueOf(user.getUserId())});
-
-        while (cursor.moveToNext()){
-
-            settings.setSettingId(cursor.getInt(cursor.getColumnIndex(SETTING_ID)));
-            settings.setColumns(cursor.getInt(cursor.getColumnIndex(COLUMNS)));
-            settings.setRows(cursor.getInt(cursor.getColumnIndex(ROWS)));
-        }
-        cursor.close();
-        DatabaseManager.getDatabaseManager().closeDatabase();
-        return settings;
+        // Adding request to request queue
+        VolleyController.getVolleyController().addToRequestQueue(strReq, requestString);
     }
 }

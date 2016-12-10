@@ -13,32 +13,46 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.RotateAnimation;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
 
+import com.bumptech.glide.Glide;
 import com.ist_311.slidingpuzzle.R;
 import com.ist_311.slidingpuzzle.models.NavDrawerItem;
 import com.ist_311.slidingpuzzle.utilities.NavigationDrawerAdapter;
+import com.ist_311.slidingpuzzle.utilities.SessionManager;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class FragmentDrawer extends Fragment {
 
+    private SessionManager sessionManager;
     private DrawerLayout mDrawerLayout;
     private View containerView;
     private static String[] titles = null;
     private FragmentDrawerListener drawerListener;
+    private ImageView imageView;
+    private int longClicks;
 
     public FragmentDrawer() {
         // Required default constructor
     }
 
+    /**
+     * The listener for the NavigationDrawer.
+     * @param listener an instance of FragmentDrawerListener.
+     */
     public void setDrawerListener(FragmentDrawerListener listener) {
         this.drawerListener = listener;
     }
 
+    /**
+     * The list of NavigationDrawer items.
+     * @return the list.
+     */
     private static List<NavDrawerItem> getData() {
         List<NavDrawerItem> data = new ArrayList<>();
-
 
         // preparing navigation drawer items
         for (String title : titles) {
@@ -55,6 +69,8 @@ public class FragmentDrawer extends Fragment {
 
         // drawer labels
         titles = getActivity().getResources().getStringArray(R.array.nav_drawer_labels);
+        sessionManager = new SessionManager(getActivity().getApplicationContext());
+        longClicks = 0;
     }
 
     @Override
@@ -64,6 +80,7 @@ public class FragmentDrawer extends Fragment {
         View layout = inflater.inflate(R.layout.fragment_navigation_drawer, container, false);
         RecyclerView recyclerView = (RecyclerView) layout.findViewById(R.id.drawerList);
 
+        // Configure the NavigationDrawerAdapter
         NavigationDrawerAdapter adapter = new NavigationDrawerAdapter(getActivity(), getData());
         recyclerView.setAdapter(adapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
@@ -80,7 +97,8 @@ public class FragmentDrawer extends Fragment {
             }
         }));
 
-        final ImageView imageView = (ImageView) layout.findViewById(R.id.profile);
+        // Configure the ImageView easter egg
+        imageView = (ImageView) layout.findViewById(R.id.profile);
         imageView.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View view, MotionEvent motionEvent) {
@@ -90,30 +108,51 @@ public class FragmentDrawer extends Fragment {
         imageView.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View view) {
-                RotateAnimation rotateAnimation = new RotateAnimation(0.0f, 360, RotateAnimation.RELATIVE_TO_SELF, 0.5f, RotateAnimation.RELATIVE_TO_SELF, 0.5f);
-                rotateAnimation.setDuration(200);
-                rotateAnimation.setFillAfter(true);
-                imageView.startAnimation(rotateAnimation);
+                if (longClicks == 0) {
+                    RotateAnimation rotateAnimation = new RotateAnimation(0.0f, 360, RotateAnimation.RELATIVE_TO_SELF, 0.5f, RotateAnimation.RELATIVE_TO_SELF, 0.5f);
+                    rotateAnimation.setDuration(1200);
+                    rotateAnimation.setFillAfter(true);
+                    imageView.startAnimation(rotateAnimation);
+                    longClicks++;
+                }else if(longClicks == 1){
+                    RotateAnimation rotateAnimation = new RotateAnimation(360, 0.0f, RotateAnimation.RELATIVE_TO_SELF, 0.5f, RotateAnimation.RELATIVE_TO_SELF, 0.5f);
+                    rotateAnimation.setDuration(1200);
+                    rotateAnimation.setFillAfter(true);
+                    imageView.startAnimation(rotateAnimation);
+                    longClicks++;
+                }else{
+                    MainActivity.enterCheat(getActivity());
+                }
                 return false;
             }
         });
 
+        // Configure the TextView
+        TextView textView = (TextView) layout.findViewById(R.id.emailTextView);
+        textView.setText(sessionManager.getEmail());
         return layout;
     }
 
-
+    /**
+     * Sets up the NavigationDrawer.
+     * @param fragmentId the containing fragment's id.
+     * @param drawerLayout the NavigationDrawer layout.
+     */
     public void setUp(int fragmentId, DrawerLayout drawerLayout) {
         containerView = getActivity().findViewById(fragmentId);
         mDrawerLayout = drawerLayout;
     }
 
+    @SuppressWarnings({"EmptyMethod", "UnusedParameters"})
     interface ClickListener {
         void onClick(View view, int position);
 
-        @SuppressWarnings("EmptyMethod")
-        void onLongClick(@SuppressWarnings("UnusedParameters") View view, @SuppressWarnings("UnusedParameters") int position);
+        void onLongClick(View view, int position);
     }
 
+    /**
+     * Listener for the NavigationDrawer's RecyclerViews.
+     */
     static class RecyclerTouchListener implements RecyclerView.OnItemTouchListener {
 
         private final GestureDetector gestureDetector;
@@ -161,7 +200,14 @@ public class FragmentDrawer extends Fragment {
     /**
      * Interface for drawer listener.
      */
+    @SuppressWarnings("UnusedParameters")
     public interface FragmentDrawerListener {
-        void onDrawerItemSelected(@SuppressWarnings("UnusedParameters") View view, int position);
+        void onDrawerItemSelected(View view, int position);
+    }
+
+    public void setProfilePicture(){
+        Glide.with(FragmentDrawer.this).load(sessionManager.getFacebookImageUrl()).into(imageView);
+        RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT);
+        imageView.setLayoutParams(layoutParams);
     }
 }

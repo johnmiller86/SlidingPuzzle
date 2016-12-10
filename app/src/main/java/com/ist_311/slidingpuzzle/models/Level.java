@@ -2,46 +2,112 @@ package com.ist_311.slidingpuzzle.models;
 
 public class Level {
 
-    private  int levelId, levelNum, cols, rows;
-    private byte[] imageBytes;
+    // Instance vars
+    private int levelNum, columns, rows, timeLimit, moveLimit;
+    private String url;
 
-    public byte[] getImageBytes() {
-        return imageBytes;
+    // Constructor
+    public Level(int levelNum){
+        this.levelNum = levelNum;
+        columns = 0;
+        rows = 0;
+        timeLimit = 0;
+        moveLimit = 0;
     }
 
-    public void setImageBytes(byte[] imageBytes) {
-        this.imageBytes = imageBytes;
-    }
-
-    public int getRows() {
-        return rows;
-    }
-
-    public void setRows(int rows) {
-        this.rows = rows;
-    }
-
-    public int getCols() {
-        return cols;
-    }
-
-    public void setCols(int cols) {
-        this.cols = cols;
-    }
-
+    /**
+     * Gets the level's number.
+     * @return sets the number.
+     */
     public int getLevelNum() {
         return levelNum;
     }
 
+    /**
+     * Sets the level's number.
+     * @param levelNum the number.
+     */
     public void setLevelNum(int levelNum) {
         this.levelNum = levelNum;
     }
 
-    public int getLevelId() {
-        return levelId;
+    /**
+     * Gets the level's columns.
+     * @return the columns.
+     */
+    public int getColumns() {
+        return columns;
     }
 
-    public void setLevelId(int levelId) {
-        this.levelId = levelId;
+    /**
+     * Sets the level's columns.
+     * @param columns the columns.
+     */
+    public void setColumns(int columns) {
+        this.columns = columns;
+    }
+
+    /**
+     * Gets the level's rows.
+     * @return the rows.
+     */
+    public int getRows() {
+        return rows;
+    }
+
+    /**
+     * Sets the level's rows.
+     * @param rows the rows.
+     */
+    public void setRows(int rows) {
+        this.rows = rows;
+    }
+
+    /**
+     * Gets the level's time limit.
+     * @return the time limit.
+     */
+    public int getTimeLimit() {
+        return timeLimit;
+    }
+
+    /**
+     * Sets the level's time limit.
+     * @param timeLimit the time limit.
+     */
+    public void setTimeLimit(int timeLimit) {
+        this.timeLimit = timeLimit;
+    }
+
+    /**
+     * Gets the level's move limit.
+     * @return the moves.
+     */
+    public int getMoveLimit() {
+        return moveLimit;
+    }
+
+    /**
+     * Sets the level's move limit.
+     * @param moveLimit the moves.
+     */
+    public void setMoveLimit(int moveLimit) {
+        this.moveLimit = moveLimit;
+    }
+
+    /**
+     * Gets the level's url.
+     * @return the url.
+     */
+    public String getUrl() {
+        return url;
+    }
+
+    /**
+     * Sets the level's url.
+     * @param url the url.
+     */
+    public void setUrl(String url) {
+        this.url = url;
     }
 }

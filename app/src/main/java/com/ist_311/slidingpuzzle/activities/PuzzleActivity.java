@@ -4,12 +4,15 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
+import android.net.ConnectivityManager;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.os.StrictMode;
 import android.os.Vibrator;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -27,15 +30,13 @@ import android.widget.Toast;
 
 import com.ist_311.slidingpuzzle.R;
 import com.ist_311.slidingpuzzle.models.LeaderboardEntry;
-import com.ist_311.slidingpuzzle.models.Puzzle;
-import com.ist_311.slidingpuzzle.models.Settings;
-import com.ist_311.slidingpuzzle.models.User;
-import com.ist_311.slidingpuzzle.utilities.LeaderboardFunctions;
+import com.ist_311.slidingpuzzle.utilities.NetworkReceiver;
 import com.ist_311.slidingpuzzle.utilities.PuzzleFunctions;
-import com.ist_311.slidingpuzzle.utilities.SettingFunctions;
-import com.ist_311.slidingpuzzle.utilities.UserFunctions;
 
+import java.io.File;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -44,29 +45,21 @@ import java.util.TimerTask;
 
 import static com.ist_311.slidingpuzzle.activities.MainActivity.PUZZLE_COL_TAG;
 import static com.ist_311.slidingpuzzle.activities.MainActivity.PUZZLE_LEVEL_TAG;
-import static com.ist_311.slidingpuzzle.activities.MainActivity.PUZZLE_MODE_TAG;
+import static com.ist_311.slidingpuzzle.activities.MainActivity.PUZZLE_MOVES_TAG;
+import static com.ist_311.slidingpuzzle.activities.MainActivity.PUZZLE_URL_TAG;
 import static com.ist_311.slidingpuzzle.activities.MainActivity.PUZZLE_ROW_TAG;
 import static com.ist_311.slidingpuzzle.activities.MainActivity.PUZZLE_TIMER_TAG;
+import static com.ist_311.slidingpuzzle.activities.MainActivity.leaderboardFunctions;
 import static com.ist_311.slidingpuzzle.activities.MainActivity.sessionManager;
 
-public class PuzzleActivity extends AppCompatActivity {
-
-    // Session
-//    SessionManager sessionManager = new SessionManager(getBaseContext());
-    private final UserFunctions userFunctions = new UserFunctions();
-    private final User user = userFunctions.getUser(sessionManager.getUsername());
-    private final SettingFunctions settingFunctions = new SettingFunctions();
-    Settings settings = settingFunctions.getSettings(user);
-    private final PuzzleFunctions puzzleFunctions = new PuzzleFunctions();
-    Puzzle puzzle = puzzleFunctions.getPuzzle(user);
-    private final LeaderboardFunctions leaderboardFunctions = new LeaderboardFunctions();
-//    private final LeaderboardEntry leaderboardEntry = leaderboardFunctions.getLeaderboards(user);
+public class PuzzleActivity extends AppCompatActivity implements NetworkReceiver.NetworkStateReceiverListener, PauseDialogFragment.PauseDialogListener{
 
     // UI components
     private TableLayout tableLayout;
     private TextView movesTextView, timerTextView;
     private ImageButton previousButton;
-    private Button pauseButton, resetButton;
+    private Button pauseButton;
+    private PauseDialogFragment pauseDialogFragment;
 
     // Lists
     private List<ImageButton> imageButtons;
@@ -76,8 +69,12 @@ public class PuzzleActivity extends AppCompatActivity {
     private Timer timer;
     private CountDownTimer countDownTimer;
     private Animation currentAnimation, previousAnimation;
-    private int counter, movesCounter, rows, cols, startTime, currentTime, score, levelNum;
+    private int counter, movesCounter, rows, cols, startTime, currentTime, score, levelNum, movesLimit, movesRemaining;
     private boolean isPause, isCampaign;
+
+    // Network
+    private NetworkReceiver networkReceiver;
+    private boolean isInFocus, connected;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -90,35 +87,30 @@ public class PuzzleActivity extends AppCompatActivity {
     public void onDestroy(){
         super.onDestroy();
         cancelTimers();
+        try{
+            unregisterReceiver(networkReceiver);
+        }catch (IllegalArgumentException ex){
+            ex.printStackTrace();
+        }
     }
 
+    @Override
+    protected void onPause(){
+        super.onPause();
+        if (!isPause && !isSolved() && currentTime != 0 && isCampaign){
+            pause();
+        }
+    }
 
     @Override
     public void onBackPressed() {
-
-        if (!isSolved()) {
-            new AlertDialog.Builder(this)
-                    .setTitle("Exit")
-                    .setMessage("Are you sure you want to quit?")
-
-                    // Open Settings button
-                    .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int which) {
-                            setResult(Activity.RESULT_OK);
-                            finish();
-                        }
-                    })
-
-                    // Denied, close app
-                    .setNegativeButton("No", new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int which) {
-                            dialog.dismiss();
-                        }
-                    })
-                    .setIcon(R.mipmap.ic_launcher)
-                    .show();
-        }else{
+        if (!isSolved() && isCampaign) {
+            pauseDialogFragment.isQuitting();
+            pause();
+        }else if (isSolved() && isCampaign) {
             setResult(Activity.RESULT_OK);
+            finish();
+        }else{
             finish();
         }
     }
@@ -134,13 +126,15 @@ public class PuzzleActivity extends AppCompatActivity {
      */
     private void initializeReferences() {
 
-        // Initializing Session
-        UserFunctions userFunctions = new UserFunctions();
-        User user = userFunctions.getUser(sessionManager.getUsername());
-        SettingFunctions settingFunctions = new SettingFunctions();
-        Settings settings = settingFunctions.getSettings(user);
-        PuzzleFunctions puzzleFunctions = new PuzzleFunctions();
-        Puzzle puzzle = puzzleFunctions.getPuzzle(user);
+        // Network stuff
+        isInFocus = true;
+        networkReceiver = new NetworkReceiver();
+        networkReceiver.addListener(this);
+        registerReceiver(networkReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
+
+        // Pause Dialog
+        pauseDialogFragment = new PauseDialogFragment ();
+        pauseDialogFragment.setPauseDialogListener(this);
 
         // Initializing Layout
         tableLayout = (TableLayout) findViewById(R.id.table_layout);
@@ -154,22 +148,19 @@ public class PuzzleActivity extends AppCompatActivity {
         answerKey = new ArrayList<>();
 
         // Campaign, set size
-        if (getIntent().getStringExtra(PUZZLE_MODE_TAG) != null){
+        if (getIntent().getStringExtra(PUZZLE_URL_TAG) != null){
             rows = getIntent().getIntExtra(PUZZLE_ROW_TAG, 4);
             cols = getIntent().getIntExtra(PUZZLE_COL_TAG, 3);
         }
+
         // Free play use user settings if available
-        else{
-            if (settings.getRows() != 0) {
-                rows = settings.getRows();
-            } else {
-                rows = 4;
-            }
-            if (settings.getColumns() != 0) {
-                cols = settings.getColumns();
-            } else {
-                cols = 3;
-            }
+        else if (getIntent().getBooleanExtra("offline", false)) {
+
+            rows = 4;
+            cols = 3;
+        }else{
+            rows = sessionManager.getRows();
+            cols = sessionManager.getCols();
         }
 
         // Initializing ImageButtons and adding to list
@@ -179,7 +170,7 @@ public class PuzzleActivity extends AppCompatActivity {
 
         // Initializing pause and reset buttons
         pauseButton = (Button) findViewById(R.id.button_pause);
-        resetButton = (Button) findViewById(R.id.button_reset);
+        Button resetButton = (Button) findViewById(R.id.button_reset);
 
         // Add listeners
         pauseButton.setOnClickListener(new View.OnClickListener() {
@@ -203,33 +194,66 @@ public class PuzzleActivity extends AppCompatActivity {
         movesCounter = 0;
         isPause = false;
 
-        // Create puzzle
+        // Create puzzleFunctions
         Intent intent = getIntent();
 
         // Campaign
-        if (intent.getStringExtra(PUZZLE_MODE_TAG) != null){
+        if (intent.getStringExtra(PUZZLE_URL_TAG) != null){
             isCampaign = true;
             startTime = intent.getIntExtra(PUZZLE_TIMER_TAG, 0);
             levelNum = intent.getIntExtra(PUZZLE_LEVEL_TAG, 1);
-//            rows = intent.getIntExtra(PUZZLE_ROW_TAG, 4);
-//            cols = intent.getIntExtra(PUZZLE_COL_TAG, 3);
+            movesLimit = intent.getIntExtra(PUZZLE_MOVES_TAG, 0);
+            movesRemaining = movesLimit;
+            movesTextView.setText(getResources().getQuantityString(R.plurals.moves, movesRemaining, movesRemaining));
 
             // Create bitmap
-            Bitmap bitmap = BitmapFactory.decodeResource(getResources(), getResources().getIdentifier(intent.getStringExtra(PUZZLE_MODE_TAG), "drawable", getPackageName()));
-            createPuzzle(bitmap);
+            StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+            StrictMode.setThreadPolicy(policy);
+            try {
+                URL url = new URL(intent.getStringExtra(PUZZLE_URL_TAG));
+                Bitmap bitmap = BitmapFactory.decodeStream(url.openConnection().getInputStream());
+                createPuzzle(bitmap);
+            } catch(IOException e) {
+                e.printStackTrace();
+            }
         }
+
         // Free play
-        else{
+        else {
             isCampaign = false;
             startTime = 0;
 
-            if (puzzle.getPuzzleId() != 0){
-                createPuzzle(puzzle.getPuzzle(this));
+            // No network use a random puzzle
+            if (intent.getBooleanExtra("offline", false)) {
+                createPuzzle(BitmapFactory.decodeResource(getResources(), R.drawable.level_1));
             }
 
-            // Free play puzzle not chosen
+            // Use free play settings
             else {
-                createPuzzle(BitmapFactory.decodeResource(getResources(), R.drawable.level_1));
+
+                // Free play puzzleFunctions set, but deleted or on another device
+                if (sessionManager.getPuzzlePath() != null && !(new File(sessionManager.getPuzzlePath()).exists())) {
+                    Toast.makeText(this, "Image deleted or you are on another device!!", Toast.LENGTH_SHORT).show();
+                    createPuzzle(BitmapFactory.decodeResource(getResources(), R.drawable.level_1));
+                }
+
+                // Use the free play puzzleFunctions
+                else if (sessionManager.getPuzzlePath() != null && new File(sessionManager.getPuzzlePath()).exists()) {
+                    Bitmap bitmap = new PuzzleFunctions().getPuzzle(this);
+
+                    // User has reinstalled and read permissions not yet enabled
+                    if (bitmap == null) {
+                        Toast.makeText(this, "You must enable permissions to use your previous free play image!!", Toast.LENGTH_SHORT).show();
+                        createPuzzle(BitmapFactory.decodeResource(getResources(), R.drawable.level_1));
+                    } else {
+                        createPuzzle(new PuzzleFunctions().getPuzzle(this));
+                    }
+                }
+
+                // Free play puzzleFunctions not chosen
+                else {
+                    createPuzzle(BitmapFactory.decodeResource(getResources(), R.drawable.level_1));
+                }
             }
         }
     }
@@ -340,8 +364,13 @@ public class PuzzleActivity extends AppCompatActivity {
             if (counter % 2 == 0) {
                 setPrevious(view);
                 imageButton.setAlpha(0.6f);
-                movesTextView.setText(getResources().getQuantityString(R.plurals.moves, movesCounter, movesCounter));
                 counter++;
+
+                if (isCampaign){
+                    movesTextView.setText(getResources().getQuantityString(R.plurals.moves, movesRemaining, movesRemaining));
+                }else {
+                    movesTextView.setText(getResources().getQuantityString(R.plurals.moves, movesCounter, movesCounter));
+                }
             }
             else if(counter % 2 == 1) {
                 previousButton.setAlpha(1.0f);
@@ -350,8 +379,14 @@ public class PuzzleActivity extends AppCompatActivity {
         }
     };
 
+    private void resetButtons(){
+        for (ImageButton imageButton : imageButtons){
+            imageButton.setAlpha(1.0f);
+        }
+    }
+
     /**
-     * Restarts the puzzle.
+     * Restarts the puzzleFunctions.
      */
     private void restart(){
 
@@ -359,8 +394,20 @@ public class PuzzleActivity extends AppCompatActivity {
         cancelTimers();
         counter = 0;
         movesCounter = 0;
-        movesTextView.setText(R.string.default_moves);
-        timerTextView.setText(R.string.default_time);
+        resetButtons();
+
+        if (isCampaign){
+            movesRemaining = movesLimit;
+            movesTextView.setText(getResources().getQuantityString(R.plurals.moves, movesRemaining, movesRemaining));
+            if (startTime > 60) {
+                timerTextView.setText(getString(R.string.minutes_seconds, startTime / 60, startTime % 60));
+            } else {
+                timerTextView.setText(getResources().getQuantityString(R.plurals.seconds, startTime, startTime));
+            }
+        }else {
+            movesTextView.setText(R.string.default_moves);
+            timerTextView.setText(R.string.default_time);
+        }
 
         // Restarting
         randomize();
@@ -375,12 +422,9 @@ public class PuzzleActivity extends AppCompatActivity {
     private void pause(){
         isPause = !isPause;
         if (isPause) {
-            disableButtons();
-            resetButton.setEnabled(false);
+            pauseDialogFragment.show(getFragmentManager(), null);
             cancelTimers();
         } else {
-            enableButtons();
-            resetButton.setEnabled(true);
             startTimer(currentTime);
         }
     }
@@ -421,7 +465,13 @@ public class PuzzleActivity extends AppCompatActivity {
                     imageButton.setImageDrawable(drawable);
                     counter++;
                     movesCounter++;
-                    movesTextView.setText(getResources().getQuantityString(R.plurals.moves, movesCounter, movesCounter));
+
+                    if (isCampaign){
+                        movesRemaining--;
+                        movesTextView.setText(getResources().getQuantityString(R.plurals.moves, movesRemaining, movesRemaining));
+                    }else {
+                        movesTextView.setText(getResources().getQuantityString(R.plurals.moves, movesCounter, movesCounter));
+                    }
                 }
             }
         }
@@ -429,14 +479,25 @@ public class PuzzleActivity extends AppCompatActivity {
             cancelTimers();
             disableButtons();
             pauseButton.setEnabled(false);
-            Toast.makeText(this, "Congratulations You Win!!!!!", Toast.LENGTH_LONG).show();
 
             if (isCampaign){
-//                score = (currentTime * 100) * (movesCounter / 100);
-//                score = (startTime - currentTime)* 1000 - (movesCounter * -250);
-                score = (int) Math.sqrt(Math.pow(3, startTime - currentTime) * Math.pow(3, movesCounter));
+                int bestPossible = levelNum * 10000 + 40000;
+                double movesFactor = 1 - ((double) (movesCounter - 1) / movesLimit);
+                double timeFactor = 1 - ((double) (startTime - currentTime - 1) /  startTime);
+                score = (int)(((movesFactor + timeFactor) / 2) * bestPossible);
+                Toast.makeText(this, "Congratulations, You Scored " + score + " points!!!", Toast.LENGTH_LONG).show();
                 recordHighScores();
+            }else{
+                Toast.makeText(this, "Congratulations, You Win!!!", Toast.LENGTH_LONG).show();
             }
+        }else if(isCampaign && movesRemaining == 0){
+            cancelTimers();
+            disableButtons();
+            pauseButton.setEnabled(false);
+
+            Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            vibrator.vibrate(500);
+            Toast.makeText(PuzzleActivity.this, "You ran out of moves!", Toast.LENGTH_LONG).show();
         }
     }
 
@@ -499,7 +560,13 @@ public class PuzzleActivity extends AppCompatActivity {
         }
         // Tiles not adjacent
         counter--;
-        movesTextView.setText(getResources().getQuantityString(R.plurals.moves, movesCounter, movesCounter));
+
+        if (isCampaign){
+            movesTextView.setText(getResources().getQuantityString(R.plurals.moves, movesRemaining, movesRemaining));
+
+        }else {
+            movesTextView.setText(getResources().getQuantityString(R.plurals.moves, movesCounter, movesCounter));
+        }
         // Don't annoy user if they cancelled a selection
         if (currentIndex != previousIndex) {
             Toast.makeText(this, "You must select two adjacent tiles!", Toast.LENGTH_SHORT).show();
@@ -571,7 +638,7 @@ public class PuzzleActivity extends AppCompatActivity {
     }
 
     /**
-     * Checks if the puzzle has been solved.
+     * Checks if the puzzleFunctions has been solved.
      */
     private boolean isSolved()
     {
@@ -584,11 +651,64 @@ public class PuzzleActivity extends AppCompatActivity {
     }
 
     private void recordHighScores(){
-        LeaderboardEntry leaderboardEntry = new LeaderboardEntry();
-        leaderboardEntry.setLevel_num(levelNum);
-        leaderboardEntry.setScore(score);
-        leaderboardEntry.setTime(timerTextView.getText().toString());
-        leaderboardEntry.setMoves(movesCounter);
-        leaderboardFunctions.insert(user, leaderboardEntry);
+        if (connected) {
+
+            LeaderboardEntry leaderboardEntry = new LeaderboardEntry();
+            leaderboardEntry.setEmail(sessionManager.getEmail());
+            leaderboardEntry.setLevel_num(levelNum);
+            leaderboardEntry.setScore(score);
+
+            if (isCampaign){
+                leaderboardEntry.setTime(String.valueOf(startTime - currentTime));
+            }else {
+                leaderboardEntry.setTime(timerTextView.getText().toString());
+            }
+            leaderboardEntry.setMoves(movesCounter);
+            leaderboardFunctions.updateLeaderboards(leaderboardEntry);
+        }else{
+            showNoNetworkMenu();
+        }
+    }
+
+    @Override
+    public void networkAvailable() {
+        if (isInFocus) {
+            connected = true;
+        }
+    }
+
+    @Override
+    public void networkUnavailable() {
+        if (isInFocus) {
+            connected = false;
+        }
+    }
+    /**
+     * Shows a menu when no network available.
+     */
+    private void showNoNetworkMenu() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("No Network Connection");
+        builder.setMessage("Your connection was interrupted and your score will not be recorded.  Would you like to retry to submit your score?");
+        builder.setPositiveButton("Retry", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                recordHighScores();
+            }
+        });
+        builder.setNegativeButton("Exit", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                finish();
+            }
+        });
+        builder.setCancelable(false);
+        AlertDialog alertDialog = builder.create();
+        alertDialog.show();
+    }
+
+    @Override
+    public void unPause() {
+        pause();
     }
 }

@@ -1,99 +1,179 @@
 package com.ist_311.slidingpuzzle.utilities;
 
-import android.content.ContentValues;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
+import android.app.Activity;
+import android.content.Intent;
+import android.widget.Toast;
 
+import com.android.volley.Request;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
+import com.ist_311.slidingpuzzle.activities.MainActivity;
 import com.ist_311.slidingpuzzle.models.User;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.UnsupportedEncodingException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
+import java.util.Map;
+
+import static com.facebook.FacebookSdk.getApplicationContext;
 
 public class UserFunctions {
 
-    // Table name
-    static final String USERS_TABLE = "users";
-
-    // Column names
-    private static final String USER_ID = "user_id";
-    static final String USERNAME = "username";
-    private static final String PASSWORD = "password";
-
     /**
-     * Builds the users table create statement.
-     * @return the SQL statement.
+     * Authenticates user against MySQL.
      */
-    static String createTable() {
-        return "CREATE TABLE " + USERS_TABLE + "("
-                + USER_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
-                + USERNAME + " TEXT, "
-                + PASSWORD + " TEXT)";
+    public void loginUser(final Activity activity, final SessionManager sessionManager, final User user) {
+        String requestString = "login";
+        Toast.makeText(getApplicationContext(), "Logging in ...", Toast.LENGTH_SHORT).show();
+        StringRequest strReq = new StringRequest(Request.Method.POST, Config.URL_LOGIN, new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    boolean error = jObj.getBoolean("error");
+
+                    // Successful login
+                    if (!error) {
+
+                        // Create login session
+                        sessionManager.setLoggedIn();
+
+                        // Set info
+                        sessionManager.setEmail(user.getEmail());
+
+                        // Launch main activity
+                        Intent intent = new Intent(getApplicationContext(), MainActivity.class);
+                        activity.startActivity(intent);
+                        activity.finish();
+                    }
+                    // Login error
+                    else {
+                        String errorMsg = jObj.getString("error_msg");
+                        Toast.makeText(getApplicationContext(), errorMsg, Toast.LENGTH_LONG).show();
+                    }
+                }
+                // JSON error
+                catch (JSONException e) {
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Toast.makeText(getApplicationContext(), error.getMessage(), Toast.LENGTH_LONG).show();
+            }
+        }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+                // Posting parameters to login url
+                Map<String, String> params = new HashMap<>();
+                params.put("email", user.getEmail());
+                params.put("password", hashPassword(user.getPassword()));
+                return params;
+            }
+        };
+
+        // Adding request to request queue
+        VolleyController.getVolleyController().addToRequestQueue(strReq, requestString);
     }
 
     /**
-     * Inserts a user into the database.
-     * @param user the user.
+     * Registers user into MySQL.
      */
-    public void insertUser(User user) {
-        SQLiteDatabase db = DatabaseManager.getDatabaseManager().openDatabase();
-        ContentValues values = new ContentValues();
-        values.put(USERNAME, user.getUsername());
-        values.put(PASSWORD, user.getPassword());
+    public void registerUser(final Activity activity, final User user, final boolean facebook) {
+        String requestString = "register";
 
-        // Inserting Row
-        db.insert(USERS_TABLE, null, values);
-        DatabaseManager.getDatabaseManager().closeDatabase();
-    }
-
-    /**
-     * Checks if the user exists in the database.
-     * @param user the user.
-     * @return true or false/
-     */
-    public boolean userExists(User user) {
-        SQLiteDatabase db = DatabaseManager.getDatabaseManager().openDatabase();
-        Cursor cursor = db.rawQuery("SELECT * FROM " + USERS_TABLE + " WHERE " + USERNAME + "=?", new String[]{user.getUsername()});
-        if (cursor != null && cursor.getCount() > 0) {
-            cursor.close();
-            DatabaseManager.getDatabaseManager().closeDatabase();
-            return true;
+        if (facebook){
+            Toast.makeText(getApplicationContext(), "Logging in...", Toast.LENGTH_SHORT).show();
+        }else {
+            Toast.makeText(getApplicationContext(), "Registering...", Toast.LENGTH_SHORT).show();
         }
-        DatabaseManager.getDatabaseManager().closeDatabase();
-        return false;
+
+        StringRequest strReq = new StringRequest(Request.Method.POST, Config.URL_REGISTER, new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    boolean error = jObj.getBoolean("error");
+
+                    // Register success
+                    if (!error && !facebook) {
+                        Toast.makeText(getApplicationContext(), "Registration Successful!", Toast.LENGTH_LONG).show();
+                        activity.finish();
+                    }
+                    // Register error
+                    else {
+                        if (!facebook) {
+                            Toast.makeText(getApplicationContext(), jObj.getString("error_msg"), Toast.LENGTH_LONG).show();
+                        }
+                    }
+                }
+                // JSON error
+                catch (JSONException e) {
+                    e.printStackTrace();
+                    if (!facebook) {
+                        Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    }
+                }
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                if (!facebook) {
+                    Toast.makeText(getApplicationContext(), error.getMessage(), Toast.LENGTH_LONG).show();
+                }
+            }
+        }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+                // Posting parameters to login url
+                Map<String, String> params = new HashMap<>();
+                if (facebook){
+                    params.put("facebook", "true");
+                }
+                params.put("email", user.getEmail());
+                params.put("password", hashPassword(user.getPassword()));
+                return params;
+            }
+
+        };
+
+        // Adding request to request queue
+        VolleyController.getVolleyController().addToRequestQueue(strReq, requestString);
     }
 
     /**
-     * Gets the user from the database.
-     * @return the user.
+     * Hashes the user's password.
+     * @param password the password to be hashed.
+     * @return the hashed password.
      */
-    public User getUser(String username){
-
-        User user = new User();
-        SQLiteDatabase db = DatabaseManager.getDatabaseManager().openDatabase();
-        Cursor cursor = db.rawQuery("SELECT * FROM " + USERS_TABLE + " WHERE " + USERNAME + "=?", new String[]{username});
-
-        while (cursor.moveToNext()){
-
-            user.setUserId(cursor.getInt(cursor.getColumnIndex(USER_ID)));
-            user.setUsername(cursor.getString(cursor.getColumnIndex(USERNAME)));
-            user.setPassword("Wouldn't you like to know?");
+    private String hashPassword(String password) {
+        String hashedPassword = null;
+        try {
+            MessageDigest messageDigest = MessageDigest.getInstance("SHA-512");
+            byte[] bytes = messageDigest.digest(password.getBytes("UTF-8"));
+            StringBuilder stringBuilder = new StringBuilder();
+            for (byte b : bytes) {
+                stringBuilder.append(Integer.toString((b & 0xff) + 0x100, 16).substring(1));
+            }
+            hashedPassword = stringBuilder.toString();
+        } catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
+            e.printStackTrace();
         }
-        cursor.close();
-        DatabaseManager.getDatabaseManager().closeDatabase();
-        return user;
-    }
-
-    /**
-     * Checks the password against the database for correctness.
-     * @param user the user.
-     * @return true or false.
-     */
-    public boolean passwordCorrect(User user) {
-        SQLiteDatabase db = DatabaseManager.getDatabaseManager().openDatabase();
-        Cursor cursor = db.rawQuery("SELECT * FROM " + USERS_TABLE + " WHERE " + USERNAME + "=? AND " + PASSWORD + "=?", new String[]{user.getUsername(), user.getPassword()});
-        if (cursor != null && cursor.getCount() > 0) {
-            cursor.close();
-            DatabaseManager.getDatabaseManager().closeDatabase();
-            return true;
-        }
-        DatabaseManager.getDatabaseManager().closeDatabase();
-        return false;
+        return hashedPassword;
     }
 }

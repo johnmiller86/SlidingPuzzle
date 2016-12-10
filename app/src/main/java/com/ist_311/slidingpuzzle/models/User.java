@@ -3,42 +3,24 @@ package com.ist_311.slidingpuzzle.models;
 public class User {
 
     // Instance vars
-    private int userId;
-    private String username, password;
+    private String email, password;
 
     /**
-     * Gets the user's id.
-     * @return the id.
+     * Gets the user's email.
+     * @return the email.
      */
-    public int getUserId() {
+    public String getEmail() {
 
-        return userId;
-    }
-
-    /**
-     * Sets the user's id.
-     * @param userId the id.
-     */
-    public void setUserId(int userId){
-        this.userId = userId;
-    }
-
-    /**
-     * Gets the user's username.
-     * @return the username.
-     */
-    public String getUsername() {
-
-        return username;
+        return email;
     }
 
     /**
      * Sets the user's email.
-     * @param username the email.
+     * @param email the email.
      */
-    public void setUsername(String username) {
+    public void setEmail(String email) {
 
-        this.username = username;
+        this.email = email;
     }
 
     /**

@@ -1,6 +1,10 @@
 package com.ist_311.slidingpuzzle.activities;
 
+import android.content.DialogInterface;
+import android.content.IntentFilter;
+import android.net.ConnectivityManager;
 import android.os.Bundle;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.EditText;
@@ -8,12 +12,22 @@ import android.widget.Toast;
 
 import com.ist_311.slidingpuzzle.R;
 import com.ist_311.slidingpuzzle.models.User;
+import com.ist_311.slidingpuzzle.utilities.NetworkReceiver;
 import com.ist_311.slidingpuzzle.utilities.UserFunctions;
 
-public class RegisterActivity extends AppCompatActivity {
+@SuppressWarnings({"UnusedParameters", "WeakerAccess"})
+public class RegisterActivity extends AppCompatActivity implements NetworkReceiver.NetworkStateReceiverListener {
 
     // UI Components
-    private EditText usernameEditText, passwordEditText, confirmPasswordEditText;
+    private EditText emailEditText, passwordEditText, confirmPasswordEditText;
+    private AlertDialog alertDialog;
+
+    // Functions
+    private UserFunctions userFunctions;
+
+    // Network
+    private NetworkReceiver networkReceiver;
+    private boolean isInFocus, connected;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -21,56 +35,107 @@ public class RegisterActivity extends AppCompatActivity {
         setContentView(R.layout.activity_register);
 
         // Linking UI Components
-        usernameEditText = (EditText) findViewById(R.id.editTextRegisterUsername);
+        emailEditText = (EditText) findViewById(R.id.editTextRegisterEmail);
         passwordEditText = (EditText) findViewById(R.id.editTextRegisterPassword);
         confirmPasswordEditText = (EditText) findViewById(R.id.editTextConfirmRegisterPassword);
+
+        // Network stuff
+        isInFocus = true;
+        networkReceiver = new NetworkReceiver();
+        networkReceiver.addListener(this);
+        registerReceiver(networkReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
+
+        // Functions
+        userFunctions = new UserFunctions();
     }
 
-
+    @Override
+    protected void onDestroy(){
+        super.onDestroy();
+        try{
+            unregisterReceiver(networkReceiver);
+        }catch (IllegalArgumentException ex){
+            ex.printStackTrace();
+        }
+    }
 
     /**
-     * Registers a new account.
-     * @param view the search button.
+     * Listener for the register button.
+     * @param view the register button.
      */
-    @SuppressWarnings("unused")
-    public void registerAccount(@SuppressWarnings("UnusedParameters") View view){
+    public void registerAccount(View view) {
+
+        // Configure user
+        User user = new User();
+        user.setEmail(emailEditText.getText().toString());
+        user.setPassword(passwordEditText.getText().toString());
+        String confirmedPass = confirmPasswordEditText.getText().toString();
 
         // Validating input
-        if (usernameEditText.getText().toString().equals("")){
-            Toast.makeText(RegisterActivity.this, "You must choose a username!!", Toast.LENGTH_SHORT).show();
+        if (user.getEmail().equals("")){
+            Toast.makeText(RegisterActivity.this, "You must provide a valid email address!!", Toast.LENGTH_SHORT).show();
         }
-        else if (passwordEditText.getText().toString().equals("")){
+        else if (user.getPassword().equals("")){
             Toast.makeText(RegisterActivity.this, "You must choose a password!!", Toast.LENGTH_SHORT).show();
         }
-        else if (usernameEditText.getText().toString().equals("")){
+        else if(!user.getPassword().matches("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=])(?=\\S+$).{8,}$")){
+            alertDialog = new AlertDialog.Builder(this).create();
+            alertDialog.setTitle("Password Policy");
+            alertDialog.setMessage("Password must contain:\n\t-8 characters\n\t-1 uppercase\n\t-1 lowercase\n\t-1 number\n\t-1 special character\nSpaces are not permitted.");
+            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
+                    new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    });
+            alertDialog.show();
+        }
+        else if (confirmedPass.equals("")){
             Toast.makeText(RegisterActivity.this, "You must confirm your password!!", Toast.LENGTH_SHORT).show();
         }
-        else if (!passwordEditText.getText().toString().equals(confirmPasswordEditText.getText().toString())){
+        else if (!user.getPassword().equals(confirmedPass)){
             Toast.makeText(RegisterActivity.this, "Password and confirmation do not match!!", Toast.LENGTH_SHORT).show();
-        }
-        else{
-
-            // User object
-            User user = new User();
-
-            // User Database functions object
-            UserFunctions userFunctions = new UserFunctions();
-
-            // Configuring user
-            user.setUsername(usernameEditText.getText().toString());
-            user.setPassword(passwordEditText.getText().toString());
-
-            // Checking uniqueness of username.
-            if (userFunctions.userExists(user)){
-                Toast.makeText(this, "Username already taken!!", Toast.LENGTH_SHORT).show();
-            }
-            else {
-                // Inserting
-                userFunctions.insertUser(user);
-
-                // Finished registering, exit
-                finish();
+        }else{
+            if (connected) {
+                userFunctions.registerUser(this, user, false);
+            }else{
+                showNoNetworkMenu();
             }
         }
+    }
+
+    @Override
+    public void networkAvailable() {
+        if (isInFocus) {
+            connected = true;
+        }
+    }
+
+    @Override
+    public void networkUnavailable() {
+        if (isInFocus) {
+            connected = false;
+        }
+    }
+    /**
+     * Shows a menu when no network available.
+     */
+    private void showNoNetworkMenu() {
+        final CharSequence[] charSequences = { "Retry", "Cancel"};
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("No Network Connection");
+        builder.setItems(charSequences, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int item) {
+                if (charSequences[item].equals("Retry")) {
+                    registerAccount(new View(getApplicationContext()));
+                }else if (charSequences[item].equals("Cancel")) {
+                    alertDialog.cancel();
+                }
+            }
+        });
+        builder.setCancelable(false);
+        alertDialog = builder.create();
+        alertDialog.show();
     }
 }

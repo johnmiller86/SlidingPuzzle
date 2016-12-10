@@ -9,7 +9,6 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context=".activities.RegisterActivity"
     android:background="@drawable/level_1">
-
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -18,22 +17,19 @@
         android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true"
         android:textSize="30sp"
-        android:background="@drawable/gradient"
-        />
-
+        android:background="@drawable/gradient"/>
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
-        android:text="@string/choose_username"
-        android:id="@+id/textViewUsername"
+        android:text="@string/enter_email"
+        android:id="@+id/textViewEmail"
         android:textSize="18sp"
-        android:layout_alignBaseline="@+id/editTextRegisterUsername"
-        android:layout_alignBottom="@+id/editTextRegisterUsername"
+        android:layout_alignBaseline="@+id/editTextRegisterEmail"
+        android:layout_alignBottom="@+id/editTextRegisterEmail"
         android:layout_alignParentStart="true"
-        android:labelFor="@+id/editTextRegisterUsername"
+        android:labelFor="@+id/editTextRegisterEmail"
         android:background="@drawable/gradient"/>
-
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -44,7 +40,6 @@
         android:layout_alignParentStart="true"
         android:labelFor="@+id/editTextRegisterPassword"
         android:background="@drawable/gradient"/>
-
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -56,17 +51,16 @@
         android:layout_alignTop="@+id/editTextConfirmRegisterPassword"
         android:labelFor="@+id/editTextConfirmRegisterPassword"
         android:background="@drawable/gradient"/>
-
     <EditText
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:inputType="text"
-        android:id="@+id/editTextRegisterUsername"
+        android:inputType="textEmailAddress"
+        android:id="@+id/editTextRegisterEmail"
         android:layout_above="@+id/editTextRegisterPassword"
         android:layout_alignParentEnd="true"
         android:layout_marginBottom="68dp"
-        android:layout_toEndOf="@+id/textViewUsername" />
-
+        android:layout_toEndOf="@+id/textViewEmail"
+        android:layout_alignStart="@+id/editTextRegisterPassword" />
     <EditText
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -75,8 +69,7 @@
         android:id="@+id/editTextRegisterPassword"
         android:layout_centerVertical="true"
         android:layout_alignParentEnd="true"
-        android:layout_alignStart="@+id/editTextRegisterUsername" />
-
+        android:layout_alignStart="@+id/editTextConfirmRegisterPassword" />
     <EditText
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -86,7 +79,6 @@
         android:layout_alignParentBottom="true"
         android:layout_alignParentEnd="true"
         android:layout_toEndOf="@+id/textViewConfirmPassword" />
-
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

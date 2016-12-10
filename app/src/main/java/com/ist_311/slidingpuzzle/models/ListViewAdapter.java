@@ -14,20 +14,19 @@ import java.util.HashMap;
 public class ListViewAdapter extends BaseAdapter{
 
     // Constants
-    public static final String FIRST_COLUMN="First";
-    public static final String SECOND_COLUMN="Second";
-    public static final String THIRD_COLUMN="Third";
-    public static final String FOURTH_COLUMN="Fourth";
-    public static final String FIFTH_COLUMN="Fifth";
+    public static final String LEVEL="level";
+    public static final String EMAIL="email";
+    public static final String SCORE="score";
+    public static final String MOVES="moves";
+    public static final String TIME="time";
 
+    // Instance vars
     private final ArrayList<HashMap<String, String>> list;
     private final LayoutInflater layoutInflater;
-    private TextView txtFirst;
-    private TextView txtSecond;
-    private TextView txtThird;
-    private TextView txtFourth;
-    private TextView txtFifth;
+    private TextView level, email, score, moves;
+    private TextView time;
 
+    // Constructor
     public ListViewAdapter(LayoutInflater layoutInflater, ArrayList<HashMap<String, String>> list){
         super();
         this.list=list;
@@ -36,49 +35,37 @@ public class ListViewAdapter extends BaseAdapter{
 
     @Override
     public int getCount() {
-        // TODO Auto-generated method stub
         return list.size();
     }
 
     @Override
     public Object getItem(int position) {
-        // TODO Auto-generated method stub
         return list.get(position);
     }
 
     @Override
     public long getItemId(int position) {
-        // TODO Auto-generated method stub
         return 0;
     }
-
-
 
     @Override
     public View getView(int position, View view, ViewGroup parent) {
 
-//        LayoutInflater inflater = MainActivity.fragment.getLayoutInflater(null);
-
         if(view == null){
-
-            view = layoutInflater.inflate(R.layout.list_view_row, null);
-
-            txtFirst=(TextView) view.findViewById(R.id.username);
-            txtSecond=(TextView) view.findViewById(R.id.score);
-            txtThird=(TextView) view.findViewById(R.id.moves);
-            txtFourth=(TextView) view.findViewById(R.id.timeLV);
-            txtFifth=(TextView) view.findViewById(R.id.levelTV);
-
+            view = layoutInflater.inflate(R.layout.list_view_row, parent, false);
+            level=(TextView) view.findViewById(R.id.levelTV);
+            email=(TextView) view.findViewById(R.id.email);
+            score=(TextView) view.findViewById(R.id.score);
+            moves=(TextView) view.findViewById(R.id.moves);
+            time=(TextView) view.findViewById(R.id.timeLV);
         }
-
         HashMap<String, String> map=list.get(position);
-        txtFirst.setText(map.get(FIRST_COLUMN));
-        txtSecond.setText(map.get(SECOND_COLUMN));
-        txtThird.setText(map.get(THIRD_COLUMN));
-        txtFourth.setText(map.get(FOURTH_COLUMN));
-        txtFifth.setText(map.get(FIFTH_COLUMN));
-
+        level.setText(map.get(LEVEL));
+        email.setText(map.get(EMAIL));
+        email.setSelected(true);
+        score.setText(map.get(SCORE));
+        moves.setText(map.get(MOVES));
+        time.setText(map.get(TIME));
         return view;
     }
-
 }

@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -20,28 +21,20 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.NumberPicker;
+import android.widget.RelativeLayout;
 
 import com.ist_311.slidingpuzzle.R;
-import com.ist_311.slidingpuzzle.models.Puzzle;
-import com.ist_311.slidingpuzzle.models.Settings;
-import com.ist_311.slidingpuzzle.models.User;
-import com.ist_311.slidingpuzzle.utilities.PuzzleFunctions;
-import com.ist_311.slidingpuzzle.utilities.SessionManager;
-import com.ist_311.slidingpuzzle.utilities.SettingFunctions;
-import com.ist_311.slidingpuzzle.utilities.UserFunctions;
 
 import static android.app.Activity.RESULT_OK;
+import static com.ist_311.slidingpuzzle.R.string.settings;
+import static com.ist_311.slidingpuzzle.activities.MainActivity.puzzleFunctions;
+import static com.ist_311.slidingpuzzle.activities.MainActivity.sessionManager;
+import static com.ist_311.slidingpuzzle.activities.MainActivity.settingFunctions;
 
 @SuppressWarnings("EmptyMethod")
 public class SettingsFragment extends Fragment {
 
-    // Session
-    private User user;
-    private Settings settings;
-    private SettingFunctions settingFunctions;
-    private Puzzle puzzle;
-    private PuzzleFunctions puzzleFunctions;
-
+    // Request tags
     private final int REQUEST_EXTERNAL_STORAGE_CAMERA = 1;
     private final int REQUEST_EXTERNAL_STORAGE_GALLERY = 2;
     private final int REQUEST_CAMERA = 3;
@@ -50,6 +43,7 @@ public class SettingsFragment extends Fragment {
     // UI components
     private View view;
     private ImageView imageView;
+    private Button rowsButton, colsButton;
 
     public SettingsFragment() {
         // Required empty public constructor
@@ -61,40 +55,19 @@ public class SettingsFragment extends Fragment {
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         view = inflater.inflate(R.layout.fragment_settings, container, false);
         initialize();
         return view;
     }
 
-    @Override
-    public void onAttach(Context context) {
-        super.onAttach(context);
-    }
-
-    @Override
-    public void onDetach() {
-        super.onDetach();
-    }
-
     private void initialize() {
 
-        // Configuring session
-        SessionManager sessionManager = new SessionManager(view.getContext());
-        UserFunctions userFunctions = new UserFunctions();
-        user = userFunctions.getUser(sessionManager.getUsername());
-        settingFunctions = new SettingFunctions();
-        settings = settingFunctions.getSettings(user);
-        puzzleFunctions = new PuzzleFunctions();
-        puzzle = puzzleFunctions.getPuzzle(user);
 
         // UI components
-        NumberPicker numberPickerRows = (NumberPicker) view.findViewById(R.id.numberPickerRows);
-        NumberPicker numberPickerCols = (NumberPicker) view.findViewById(R.id.numberPickerCols);
         imageView = (ImageView) view.findViewById(R.id.imageView);
-        imageView.setImageBitmap(puzzle.getPuzzle(view.getContext()));
+        imageView.setImageBitmap(puzzleFunctions.getPuzzle(getActivity().getBaseContext()));
         Button imagePicker = (Button) view.findViewById(R.id.button_pick_puzzle);
         imagePicker.setOnClickListener(new View.OnClickListener(){
 
@@ -103,50 +76,27 @@ public class SettingsFragment extends Fragment {
                 chooseImage();
             }
         });
-
-        numberPickerCols.setOnValueChangedListener(new NumberPicker.OnValueChangeListener() {
+        rowsButton = (Button) view.findViewById(R.id.button_pick_rows);
+        colsButton = (Button) view.findViewById(R.id.button_pick_columns);
+        rowsButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onValueChange(NumberPicker numberPicker, int i, int i2) {
-                settings.setColumns(i2);
-                if (settings.getSettingId() != 0) {
-                    settingFunctions.update(user, settings);
-                }
-                else {
-                    // First time insert and reassign settings to get settings id
-                    settingFunctions.insert(user, settings);
-                    settings = settingFunctions.getSettings(user);
-                }
+            public void onClick(View view) {
+                showNumberPicker("rows");
             }
         });
-
-        numberPickerRows.setOnValueChangedListener(new NumberPicker.OnValueChangeListener() {
+        colsButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onValueChange(NumberPicker numberPicker, int i, int i2) {
-                settings.setRows(i2);
-                if (settings.getSettingId() != 0) {
-                    settingFunctions.update(user, settings);
-                }
-                else{
-                    // Fist time insert and reassign settings to get settings id
-                    settingFunctions.insert(user, settings);
-                    settings = settingFunctions.getSettings(user);
-                }
+            public void onClick(View view) {
+                showNumberPicker("columns");
             }
         });
-
-        numberPickerCols.setMaxValue(8);
-        numberPickerRows.setMaxValue(8);
-        numberPickerCols.setMinValue(2);
-        numberPickerRows.setMinValue(2);
-        if (settings.getSettingId() != 0) {
-            numberPickerCols.setValue(settings.getColumns());
-            numberPickerRows.setValue(settings.getRows());
-        }else{
-            numberPickerCols.setValue(3);
-            numberPickerRows.setValue(4);
-        }
+        rowsButton.setText(String.valueOf(sessionManager.getRows()));
+        colsButton.setText(String.valueOf(sessionManager.getCols()));
     }
 
+    /**
+     * Opens an alert dialog to choose image source.
+     */
     private void chooseImage() {
         final CharSequence[] charSequences = { "Take Photo", "Choose from Library", "Cancel" };
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
@@ -177,40 +127,37 @@ public class SettingsFragment extends Fragment {
      * @param data the image data.
      */
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
+
+        // Camera Request
         if (resultCode == RESULT_OK) {
             if (requestCode == REQUEST_CAMERA){
+
+                // Retrieve captured photo
                 Uri imageUri = data.getData();
-                puzzle.setPuzzlePath(getImagePath(getContext(), imageUri));
-                Bitmap bitmap = puzzle.getPuzzle(getContext());
+                sessionManager.setPuzzlePath(getImagePath(getContext(), imageUri));
+
+                // Update ImageView
+                Bitmap bitmap = puzzleFunctions.getPuzzle(getContext());
                 imageView.setImageBitmap(bitmap);
 
-                if (puzzle.getPuzzleId() != 0) {
-                    // Update
-                    puzzleFunctions.update(user, puzzle);
-                }else{
-                    // First time, insert
-                    puzzleFunctions.insert(user, puzzle);
+                // Update MySQL
+                settingFunctions.saveSettings(getActivity());
 
-                    // Get the new autoincrement puzzleId
-                    puzzle = puzzleFunctions.getPuzzle(user);
-                }
             }
+
+            // Gallery Request
             else if (requestCode == SELECT_IMAGE) {
+
+                // Retrieve selected image
                 Uri imageUri = data.getData();
-                puzzle.setPuzzlePath(getImagePath(getContext(), imageUri));
-                Bitmap bitmap = puzzle.getPuzzle(getContext());
+                sessionManager.setPuzzlePath(getImagePath(getContext(), imageUri));
+
+                // Update ImageView
+                Bitmap bitmap = puzzleFunctions.getPuzzle(getContext());
                 imageView.setImageBitmap(bitmap);
 
-                if (puzzle.getPuzzleId() != 0) {
-                    // Update
-                    puzzleFunctions.update(user, puzzle);
-                }else{
-                    // First time insert
-                    puzzleFunctions.insert(user, puzzle);
-
-                    // Get the new puzzleId
-                    puzzle = puzzleFunctions.getPuzzle(user);
-                }
+                // Update MySQL
+                settingFunctions.saveSettings(getActivity());
             }
         }
     }
@@ -242,6 +189,8 @@ public class SettingsFragment extends Fragment {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults){
         switch (requestCode){
+
+            // Camera
             case REQUEST_EXTERNAL_STORAGE_CAMERA: {
                 // Granted
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
@@ -253,11 +202,11 @@ public class SettingsFragment extends Fragment {
                 else if (!ActivityCompat.shouldShowRequestPermissionRationale(getActivity(), Manifest.permission.READ_EXTERNAL_STORAGE)){
                     new AlertDialog.Builder(getContext())
                             .setTitle("Permission was blocked!")
-                            .setMessage("You have previously blocked this app from accessing external storage. To set a free play puzzle, the app needs to " +
+                            .setMessage("You have previously blocked this app from accessing external storage. To set a free play puzzleFunctions, the app needs to " +
                                     "retrieve image paths and will not function without this access. Would you like to go to settings and allow this permission?")
 
                             // Open Settings button
-                            .setPositiveButton(R.string.settings, new DialogInterface.OnClickListener() {
+                            .setPositiveButton(settings, new DialogInterface.OnClickListener() {
                                 public void onClick(DialogInterface dialog, int which) {
                                     goToSettings();
                                 }
@@ -276,7 +225,7 @@ public class SettingsFragment extends Fragment {
                 else{
                     new AlertDialog.Builder(getContext())
                             .setTitle("Permission was denied!")
-                            .setMessage("You are unable to set a free play puzzle without access to external storage. Would you like to allow access?")
+                            .setMessage("You are unable to set a free play puzzleFunctions without access to external storage. Would you like to allow access?")
 
                             // Open Settings button
                             .setPositiveButton(R.string.allow, new DialogInterface.OnClickListener() {
@@ -302,19 +251,16 @@ public class SettingsFragment extends Fragment {
 
                     Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
                     startActivityForResult(intent, SELECT_IMAGE);
-//                    intent.setType("image/*");
-//                    intent.setAction(Intent.ACTION_GET_CONTENT);
-//                    startActivityForResult(Intent.createChooser(intent, "Select a Photo"),SELECT_IMAGE);
                 }
                 // Blocked
                 else if(!ActivityCompat.shouldShowRequestPermissionRationale(getActivity(), Manifest.permission.READ_EXTERNAL_STORAGE)){
                     new AlertDialog.Builder(getContext())
                             .setTitle("Permission was blocked!")
-                            .setMessage("You have previously blocked this app from accessing external storage. To set a free play puzzle, the app needs to " +
+                            .setMessage("You have previously blocked this app from accessing external storage. To set a free play puzzleFunctions, the app needs to " +
                                     "retrieve image paths and will not function without this access. Would you like to go to settings and allow this permission?")
 
                             // Open Settings button
-                            .setPositiveButton(R.string.settings, new DialogInterface.OnClickListener() {
+                            .setPositiveButton(settings, new DialogInterface.OnClickListener() {
                                 public void onClick(DialogInterface dialog, int which) {
                                     goToSettings();
                                 }
@@ -333,7 +279,7 @@ public class SettingsFragment extends Fragment {
                 else {
                     new AlertDialog.Builder(getContext())
                             .setTitle("Permission was denied!")
-                            .setMessage("You are unable to set a free play puzzle without access to external storage. Would you like to allow access?")
+                            .setMessage("You are unable to set a free play puzzleFunctions without access to external storage. Would you like to allow access?")
 
                             // Open Settings button
                             .setPositiveButton(R.string.allow, new DialogInterface.OnClickListener() {
@@ -364,5 +310,66 @@ public class SettingsFragment extends Fragment {
         intent.setData(uri);
         int REQUEST_PERMISSION = 0;
         startActivityForResult(intent, REQUEST_PERMISSION);
+    }
+
+    /**
+     * Shows the number picker to change rows or columns.
+     * @param which rows or columns.
+     */
+    private void showNumberPicker(final String which){
+
+        // Lock the orientation to preserve dialog and the async task
+        getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
+
+        // Create the layout
+        RelativeLayout relativeLayout = new RelativeLayout(getContext());
+        final NumberPicker numberPicker = new NumberPicker(getContext());
+        numberPicker.setMaxValue(8);
+        numberPicker.setMinValue(2);
+        if (which.equals("rows")) {
+            numberPicker.setValue(sessionManager.getRows());
+        }else{
+            numberPicker.setValue(sessionManager.getCols());
+        }
+        numberPicker.setDescendantFocusability(NumberPicker.FOCUS_BLOCK_DESCENDANTS);
+
+        RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(50, 50);
+        RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+        layoutParams.addRule(RelativeLayout.CENTER_HORIZONTAL);
+
+        relativeLayout.setLayoutParams(params);
+        relativeLayout.addView(numberPicker,layoutParams);
+
+        AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(getContext());
+        alertDialogBuilder.setTitle("Select number of " + which);
+        alertDialogBuilder.setView(relativeLayout);
+        alertDialogBuilder
+                .setCancelable(false)
+                .setPositiveButton("Ok",
+
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int id) {
+
+                                if (which.equals("rows")){
+                                    sessionManager.setRows(numberPicker.getValue());
+                                    rowsButton.setText(String.valueOf(sessionManager.getRows()));
+                                }else{
+                                    sessionManager.setCols(numberPicker.getValue());
+                                    colsButton.setText(String.valueOf(sessionManager.getCols()));
+                                }
+                                settingFunctions.saveSettings(getActivity());
+
+                            }
+                        })
+                .setNegativeButton("Cancel",
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog,
+                                                int id) {
+                                dialog.cancel();
+                                getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
+                            }
+                        });
+        AlertDialog alertDialog = alertDialogBuilder.create();
+        alertDialog.show();
     }
 }

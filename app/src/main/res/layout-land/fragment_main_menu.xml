@@ -1,10 +1,10 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    xmlns:ads="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".activities.MainMenuFragment"
     android:id="@+id/fragment_main_menu">
-
         <Button
             android:id="@+id/button_leaderboards"
             android:layout_width="wrap_content"
@@ -14,7 +14,6 @@
             android:layout_alignEnd="@+id/button_settings"
             android:layout_alignParentStart="true"
             android:background="@drawable/button" />
-
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -24,7 +23,6 @@
             android:layout_above="@+id/button_leaderboards"
             android:layout_alignParentStart="true"
             android:layout_alignParentEnd="true" />
-
         <TextView
             android:text="@string/app_name"
             android:layout_width="wrap_content"
@@ -36,7 +34,6 @@
             android:layout_alignParentTop="true"
             android:layout_alignParentStart="true"
             android:layout_alignParentEnd="true" />
-
         <Button
             android:id="@+id/button_campaign"
             android:layout_width="wrap_content"
@@ -46,7 +43,6 @@
             android:layout_above="@+id/button_freeplay"
             android:layout_alignStart="@+id/button_freeplay"
             android:layout_alignParentEnd="true" />
-
         <Button
             android:id="@+id/button_freeplay"
             android:layout_width="wrap_content"
@@ -56,5 +52,16 @@
             android:layout_above="@+id/button_settings"
             android:layout_alignParentStart="true"
             android:layout_alignParentEnd="true" />
-
+        <com.google.android.gms.ads.NativeExpressAdView
+            android:id="@+id/adView2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            ads:adSize="FULL_WIDTHx100"
+            ads:adUnitId="@string/native_ad_test_unit_id"
+            android:layout_below="@+id/logoTextView"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentStart="true"
+            android:layout_centerHorizontal="true"
+            android:layout_above="@+id/button_campaign">
+        </com.google.android.gms.ads.NativeExpressAdView>
 </RelativeLayout>
