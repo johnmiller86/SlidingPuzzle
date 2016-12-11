@@ -16,6 +16,7 @@ import java.util.Map;
 
 import static com.facebook.FacebookSdk.getApplicationContext;
 import static com.ist_311.slidingpuzzle.activities.MainActivity.sessionManager;
+import static com.ist_311.slidingpuzzle.models.Level.NUM_LEVELS;
 
 public class LeaderboardFunctions {
 
@@ -37,7 +38,7 @@ public class LeaderboardFunctions {
                     // Check for error node in json
                     if (!error){
                         // Open next level, rather than making another HTTP request
-                        if (sessionManager.getUnlocked() < 20) {
+                        if (sessionManager.getUnlocked() < NUM_LEVELS) {
                             sessionManager.setUnlocked(sessionManager.getUnlocked() + 1);
                         }
                     }else{

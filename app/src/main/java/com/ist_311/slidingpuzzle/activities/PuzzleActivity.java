@@ -223,7 +223,7 @@ public class PuzzleActivity extends AppCompatActivity implements NetworkReceiver
             isCampaign = false;
             startTime = 0;
 
-            // No network use a random puzzle
+            // No network use a default puzzle
             if (intent.getBooleanExtra("offline", false)) {
                 createPuzzle(BitmapFactory.decodeResource(getResources(), R.drawable.level_1));
             }

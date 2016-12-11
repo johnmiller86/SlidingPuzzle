@@ -25,6 +25,8 @@ import com.ist_311.slidingpuzzle.utilities.PuzzleFunctions;
 import com.ist_311.slidingpuzzle.utilities.SessionManager;
 import com.ist_311.slidingpuzzle.utilities.SettingFunctions;
 
+import static com.ist_311.slidingpuzzle.models.Level.NUM_LEVELS;
+
 @SuppressWarnings("EmptyMethod")
 @SuppressLint("CommitTransaction")
 public class MainActivity extends FragmentActivity implements FragmentDrawer.FragmentDrawerListener, NetworkReceiver.NetworkStateReceiverListener {
@@ -277,7 +279,7 @@ public class MainActivity extends FragmentActivity implements FragmentDrawer.Fra
                     public void onClick(DialogInterface dialog, int whichButton) {
                         String input = editText.getText().toString().trim();
                         if (input.equals("/hacklevels")){
-                            sessionManager.setUnlocked(20);
+                            sessionManager.setUnlocked(NUM_LEVELS);
                             Toast.makeText(context, "Enjoy it while it lasts dirtbag!", Toast.LENGTH_LONG).show();
                         }
                     }

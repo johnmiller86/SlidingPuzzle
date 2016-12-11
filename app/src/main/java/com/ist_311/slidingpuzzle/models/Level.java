@@ -2,6 +2,9 @@ package com.ist_311.slidingpuzzle.models;
 
 public class Level {
 
+    // Current number of levels
+    public static final int NUM_LEVELS = 18;
+
     // Instance vars
     private int levelNum, columns, rows, timeLimit, moveLimit;
     private String url;
